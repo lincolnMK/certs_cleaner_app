@@ -1,4 +1,5 @@
-('D:\\certs app\\cert_cleaner_app\\build\\run\\PYZ-00.pyz',
+('C:\\Users\\LIMS\\OneDrive\\ministry of '
+ 'lands\\cert_cleaner_app\\gui\\build\\main_gui\\PYZ-00.pyz',
  [('__future__',
    'C:\\Users\\LIMS\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\__future__.py',
    'PYMODULE'),
@@ -48,19 +49,24 @@
    'C:\\Users\\LIMS\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\calendar.py',
    'PYMODULE'),
   ('cert_cleaner',
-   'D:\\certs app\\cert_cleaner_app\\cert_cleaner\\__init__.py',
+   'C:\\Users\\LIMS\\OneDrive\\ministry of '
+   'lands\\cert_cleaner_app\\cert_cleaner\\__init__.py',
    'PYMODULE'),
   ('cert_cleaner.cert_cleaner',
-   'D:\\certs app\\cert_cleaner_app\\cert_cleaner\\cert_cleaner.py',
+   'C:\\Users\\LIMS\\OneDrive\\ministry of '
+   'lands\\cert_cleaner_app\\cert_cleaner\\cert_cleaner.py',
    'PYMODULE'),
   ('cert_cleaner.merger',
-   'D:\\certs app\\cert_cleaner_app\\cert_cleaner\\merger.py',
+   'C:\\Users\\LIMS\\OneDrive\\ministry of '
+   'lands\\cert_cleaner_app\\cert_cleaner\\merger.py',
    'PYMODULE'),
   ('cert_cleaner.titleplan_cleaner',
-   'D:\\certs app\\cert_cleaner_app\\cert_cleaner\\titleplan_cleaner.py',
+   'C:\\Users\\LIMS\\OneDrive\\ministry of '
+   'lands\\cert_cleaner_app\\cert_cleaner\\titleplan_cleaner.py',
    'PYMODULE'),
   ('cert_cleaner.verifier',
-   'D:\\certs app\\cert_cleaner_app\\cert_cleaner\\verifier.py',
+   'C:\\Users\\LIMS\\OneDrive\\ministry of '
+   'lands\\cert_cleaner_app\\cert_cleaner\\verifier.py',
    'PYMODULE'),
   ('contextlib',
    'C:\\Users\\LIMS\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\contextlib.py',
@@ -160,10 +166,6 @@
    'PYMODULE'),
   ('glob',
    'C:\\Users\\LIMS\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\glob.py',
-   'PYMODULE'),
-  ('gui', 'D:\\certs app\\cert_cleaner_app\\gui\\__init__.py', 'PYMODULE'),
-  ('gui.main_gui',
-   'D:\\certs app\\cert_cleaner_app\\gui\\main_gui.py',
    'PYMODULE'),
   ('gzip',
    'C:\\Users\\LIMS\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\gzip.py',

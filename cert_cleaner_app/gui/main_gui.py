@@ -3,13 +3,25 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, scrolledtext, messagebox
 from cert_cleaner import cert_cleaner, titleplan_cleaner, merger, verifier
+import logging
+
+class GuiHandler(logging.Handler):
+    """Custom logging handler to redirect logs to a GUI widget."""
+    def __init__(self, gui_callback, tab_name):
+        super().__init__()
+        self.gui_callback = gui_callback
+        self.tab_name = tab_name
+
+    def emit(self, record):
+        msg = self.format(record)
+        self.gui_callback(self.tab_name, msg)
 
 class CertCleanerGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Certificate Processing App")
         self.root.geometry("800x600")
-
+        self.log_widgets = {}
         self.notebook = ttk.Notebook(root)
         self.notebook.pack(fill="both", expand=True)
 
@@ -26,33 +38,30 @@ class CertCleanerGUI:
     def setup_clean_certs_tab(self):
         tab = self.tabs["Clean Certs"]
         self._add_folder_inputs(tab, "Cert Input", "Cert Output")
-        self._add_entry(tab, "TLMA Code")
-        self._add_entry(tab, "TA Code (optional)")
         self._add_dry_run(tab)
         self._add_run_button(tab, cert_cleaner.run_cert_cleaner)
-        self._add_log_area(tab)
+        self._add_log_area(tab, "Clean Certs")
 
     def setup_titleplan_tab(self):
         tab = self.tabs["Clean Title Plans"]
         self._add_folder_inputs(tab, "Title Plan Input", "Title Plan Output")
         self._add_dry_run(tab)
         self._add_run_button(tab, titleplan_cleaner.main)
-        self._add_log_area(tab)
+        self._add_log_area(tab, "Clean Title Plans")
 
     def setup_merge_tab(self):
         tab = self.tabs["Merge & Move"]
         self._add_folder_inputs(tab, "Cert Folder", "Title Plan Folder")
         self._add_folder_inputs(tab, "Merged Output", None)
-        self._add_dry_run(tab)
         self._add_run_button(tab, merger.main)
-        self._add_log_area(tab)
+        self._add_log_area(tab, "Merge & Move")
 
     def setup_verify_tab(self):
         tab = self.tabs["Verify"]
         self._add_folder_inputs(tab, "Merged Folder", None)
         self._add_folder_inputs(tab, "Ready for Print", "Review Folder")
         self._add_run_button(tab, verifier.main)
-        self._add_log_area(tab)
+        self._add_log_area(tab, "Verify")
 
     # Reusable GUI components
     def _add_folder_inputs(self, parent, label1, label2):
@@ -67,12 +76,13 @@ class CertCleanerGUI:
 
 
 
-    def _write_log(self, message):
-            if hasattr(self, "log_widget"):
-                self.log_widget.configure(state="normal")
-                self.log_widget.insert(tk.END, message + "\n")
-                self.log_widget.see(tk.END)
-                self.log_widget.configure(state="disabled")
+    def _write_log(self, tab_name, message):
+        if tab_name in self.log_widgets:
+            widget = self.log_widgets[tab_name]
+            widget.configure(state="normal")
+            widget.insert(tk.END, message + "\n")
+            widget.see(tk.END)
+            widget.configure(state="disabled")
 
     def _add_entry(self, parent, label):
         row = ttk.Frame(parent)
@@ -92,10 +102,11 @@ class CertCleanerGUI:
     def _add_run_button(self, parent, callback):
         ttk.Button(parent, text="Run", command=lambda: self._run_stage(callback)).pack(pady=10)
 
-    def _add_log_area(self, parent):
-        self.log_widget = scrolledtext.ScrolledText(parent, height=10, state="disabled")
-        self.log_widget.pack(fill="both", expand=True, padx=10, pady=10)
-        self._write_log("Logs will appear here...\n")
+    def _add_log_area(self, parent, tab_name):
+        log_widget = scrolledtext.ScrolledText(parent, height=10, state="disabled")
+        log_widget.pack(fill="both", expand=True, padx=10, pady=10)
+        self.log_widgets[tab_name] = log_widget
+        self._write_log(tab_name, "Logs will appear here...\n")
 
     
     def _browse_folder(self, entry_widget):
@@ -106,56 +117,28 @@ class CertCleanerGUI:
 
     def _run_stage(self, callback):
         try:
-            current_tab = self.notebook.select()
-            tab_text = self.notebook.tab(current_tab, "text")
-
-            if tab_text == "Clean Certs":
-                in_folder = self.cert_input.get()
-                out_folder = self.cert_output.get()
-                tlma = self.tlma_code.get()
-                ta = self.ta_code_optional.get()
-            elif tab_text == "Clean Title Plans":
-                in_folder = self.title_plan_input.get()
-                out_folder = self.title_plan_output.get()
-                tlma = None
-                ta = None
-
-            elif tab_text == "Merge & Move":
-                cert_folder = self.cert_folder.get()
-                titleplan_folder = self.title_plan_folder.get()
-                output_folder = self.merged_output.get()
-                tlma = None
-                ta = None
-
-                dry_run = self.dry_run_var.get()
-                callback(cert_folder, titleplan_folder, output_folder, tlma, ta, dry_run, self._write_log)
-                messagebox.showinfo("Success", f"{tab_text} stage completed.")
-                return
-
-            elif tab_text == "Verify":
-                cert_folder = self.merged_folder.get()         # merged PDFs
-                titleplan_folder = None                         # not needed
-                output_folder = self.ready_for_print.get()     # verified files go here
-                tlma = None
-                ta = None
-
-                dry_run = self.dry_run_var.get()
-                callback(cert_folder, titleplan_folder, output_folder, tlma, ta, dry_run, self._write_log)
-                messagebox.showinfo("Success", f"{tab_text} stage completed.")
-                return
-
-
-
-            else:
-                raise ValueError("Unknown tab selected.")
-
+            current_tab = self.notebook.tab(self.notebook.select(), "text")
+            in_folder = self.cert_input.get()
+            out_folder = self.cert_output.get()
             dry_run = self.dry_run_var.get()
 
-            callback(in_folder, out_folder, tlma, ta, dry_run, self._write_log)
-            messagebox.showinfo("Success", f"{tab_text} stage completed.")
+            # Setup GUI logging
+            gui_handler = GuiHandler(self._write_log, current_tab)
+            gui_handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
+
+            # Optional: also keep terminal output
+            logging.getLogger().handlers = []  # clear old handlers
+            logging.getLogger().addHandler(gui_handler)
+            logging.getLogger().addHandler(logging.StreamHandler())  # terminal optional
+            logging.getLogger().setLevel(logging.INFO)
+
+            # Run the actual stage
+            callback(in_folder, out_folder, dry_run)
+
+            messagebox.showinfo("Success", f"{current_tab}: Certificate processing completed.")
         except Exception as e:
-            self._write_log(f"Error: {e}")
-            messagebox.showerror("Error", f"Something went wrong:\n{e}")
+            messagebox.showerror("Error", f"Something went wrong:\n{e})")
+
 
 
 if __name__ == "__main__":

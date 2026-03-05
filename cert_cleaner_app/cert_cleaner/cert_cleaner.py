@@ -1,92 +1,88 @@
 # cert_cleaner.py
 
 import argparse
-import os
 import shutil
 import re
 from pathlib import Path
 import logging
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-UPIN_RE = re.compile(r'(\d{4,})')
+
+# Regex:
+# Look for the word "on" then capture everything until first underscore
+UPIN_PATTERN = re.compile(r'on\s+([0-9A-Za-z-]+)_', re.IGNORECASE)
 
 
+def extract_upin(filename):
+    """
+    Extract UPIN from filename.
+    Rule: UPIN starts after the word 'on' and ends at first underscore.
+    """
+    name = Path(filename).name
 
-def parse_cert_name(filename, tlma_code):
-    base = Path(filename).name
-    s = base.replace(" ", "_").lower()
-    tlma_code = tlma_code.replace(" ", "_").lower()
-
-    # Match pattern: TLMA-UPIN before underscore
-    pattern = re.compile(re.escape(tlma_code.lower()) + r"-\d{4,}")
-    match = pattern.search(s)
+    match = UPIN_PATTERN.search(name)
     if match:
-        cleaned = match.group(0)
-        return {"tlma": tlma_code, "gvh": "", "upin": cleaned}
+        return match.group(1)
+
     return None
 
 
-def run_cert_cleaner(input_folder, output_folder, tlma_code, ta_code=None, dry_run=False, log_callback=None):
-    input_folder = Path(input_folder)
-    output_folder = Path(output_folder)
+def run_cert_cleaner(in_folder, out_folder, dry_run=False):
+    input_folder = Path(in_folder)
+    output_folder = Path(out_folder)
     output_folder.mkdir(parents=True, exist_ok=True)
 
-    files = [f for f in input_folder.iterdir() if f.is_file() and f.suffix.lower() == '.pdf']
+    files = [f for f in input_folder.iterdir()
+             if f.is_file() and f.suffix.lower() == ".pdf"]
+
     logging.info(f"Found {len(files)} PDF(s) in input folder.")
 
-
-
-    if not tlma_code or not tlma_code.strip():
-        raise ValueError("TLMA code is required. Please provide a valid TLMA code.")
-
-    problem_files = []
-    fallback_count = 0
     renamed_count = 0
-
+    skipped_files = []
 
     for f in files:
-        parsed = parse_cert_name(f.name, tlma_code)
-        if not parsed:
-            logging.warning(f"TLMA code '{tlma_code}' not found or parse failed: {f.name}")
-            problem_files.append(f.name)
+        upin = extract_upin(f.name)
+
+        if not upin:
+            logging.warning(f"Could not extract UPIN: {f.name}")
+            skipped_files.append(f.name)
             continue
-            # Conditional filename logic
 
-        if tlma_code == "fallback":
-            new_name = f"{parsed['upin']}.pdf"
-            fallback_count += 1
-        else:
-    # If UPIN already includes TLMA, avoid repeating it
-             if parsed["upin"].startswith(parsed["tlma"]):
-                 new_name = f"{parsed['upin']}.pdf"
-             else:
-                 new_name = f"{parsed['tlma']}-{parsed['upin']}.pdf"
-             renamed_count += 1      
-        
+        new_name = f"{upin}.pdf"
+        destination = output_folder / new_name
 
-        dest = output_folder / new_name
         if dry_run:
-            logging.info(f"[DRY] {f.name} => {new_name}")
+            logging.info(f"[DRY RUN] {f.name}  =>  {new_name}")
         else:
-            shutil.copy2(f, dest)
-            logging.info(f"Renamed: {f.name} -> {new_name}")
+            shutil.copy2(f, destination)
+            logging.info(f"Renamed: {f.name}  ->  {new_name}")
+
+        renamed_count += 1
 
     # Summary
-    logging.info(f"Renamed using TLMA logic: {renamed_count}")
-    logging.info(f" Renamed using fallback logic: {fallback_count}")
-    if problem_files:
-        logging.warning(f" Skipped files: {len(problem_files)}")
-        for p in problem_files:
-            logging.warning(f"  - {p}")
-   
+    logging.info(f"✅ Successfully processed: {renamed_count}")
+    if skipped_files:
+        logging.warning(f"❌ Skipped files: {len(skipped_files)}")
+        for s in skipped_files:
+            logging.warning(f"   - {s}")
 
-# CLI entry point
+
+# CLI Entry Point
 def main():
-    p = argparse.ArgumentParser(description="Certificate cleaning and rename")
-    p.add_argument("--in", dest="in_folder", required=True, help="Input folder with certificate PDFs")
-    p.add_argument("--out", dest="out_folder", required=True, help="Output folder for cleaned PDFs")
-    p.add_argument("--tlma", required=True, help="TLMA code to locate within filenames")
-    p.add_argument("--ta", required=False, help="TA code (not currently used in parsing)")
-    p.add_argument("--dry-run", action="store_true", help="Show what would happen without copying files")
-    args = p.parse_args()
-    run_cert_cleaner(args.in_folder, args.out_folder, args.tlma, args.ta, args.dry_run)
+    parser = argparse.ArgumentParser(
+        description="Certificate cleaner - extracts UPIN and renames PDFs"
+    )
+    parser.add_argument("--in", dest="in_folder", required=True,
+                        help="Input folder containing certificate PDFs")
+    parser.add_argument("--out", dest="out_folder", required=True,
+                        help="Output folder for cleaned PDFs")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Preview changes without copying files")
+
+    args = parser.parse_args()
+
+    run_cert_cleaner(args.in_folder, args.out_folder, args.dry_run)
+
+
+if __name__ == "__main__":
+    main()
